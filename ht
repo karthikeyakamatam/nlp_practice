@@ -1,0 +1,33 @@
+<!DOCTYPE htm>
+<html>
+<head>
+<title> registration </title>
+<style>
+table{margin:100px auto; border:5px solid black; border-bottom-rightradius:30px; border-bottom-left-radius:30px; padding:5%; backgroundcolor:powderblue; } 
+td{padding:10px;} 
+input{border-radius:5px;border-width:3px; height:20px;border-color:5px 
+solid black;} 
+input:hover{background-color:#ff1f00;opacity:1; color:white;fontweight:bold; background-clip:border-box;} 
+caption{border:5px solid black; border-bottom:none; border-top-leftradius:20px; border-top-right-radius:20px; padding:10px; backgroundcolor:black; color:white; opacity:0.9;} 
+</style> </head> 
+<body style="font-size:20px;">
+
+<table> 
+<caption>REGISTRATION FORM</caption> 
+<tr> <td id="1st">firstname</td> <td><input type="text"></td> </tr> 
+<tr> <td>lastname</td> <td><input type="text"></td> </tr> 
+<tr> <td>password</td> <td><input type="password"></td> </tr> 
+<tr> <td>email</td> <td><input type="email"></td> </tr>
+<tr> <td>gender</td> <td> <input id="opt2" type="radio" name="1" 
+><label for="opt2">male</label>
+<input id="op3" type="radio" name="1"><label 
+for="op3">female</label></td>
+</tr>
+<tr>
+<td colspan="2" style="text-align:center;"><input type="submit" 
+style="width:170px;height:30px;">
+</td>
+</tr>
+</table>
+</body>
+</html>
