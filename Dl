@@ -1,0 +1,310 @@
+import numpy as np
+from keras.models import Sequential
+from keras.preprocessing.sequence import pad_sequences
+from keras.layers import Dropout, Dense, Embedding, LSTM
+from keras.datasets import imdb
+from keras.callbacks import EarlyStopping
+from keras.preprocessing.text import Tokenizer
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import re
+import nltk
+
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+# Loading Datasets
+(x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=100)
+word_index = imdb.get_word_index()
+reverse_word_index = dict([(value, key) for (key, value) in word_index.items()])
+
+# Preprocessing Data
+def preprocess_text(text):
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    text = text.lower()
+    stop_words = set(stopwords.words('english'))
+    words = text.split()
+    words = [word for word in words if word.lower() not in stop_words]
+    lemmatizer = WordNetLemmatizer()
+    words = [lemmatizer.lemmatize(word) for word in words]
+    return ' '.join(words)
+
+x_train_text = [' '.join([reverse_word_index.get(i - 3, '?') for i in sequence]) for sequence in x_train]
+x_test_text = [' '.join([reverse_word_index.get(i - 3, '?') for i in sequence]) for sequence in x_test]
+x_train_text = [preprocess_text(text) for text in x_train_text]
+x_test_text = [preprocess_text(text) for text in x_test_text]
+
+maxlen = 200
+tokenizer = Tokenizer(num_words=10000)
+tokenizer.fit_on_texts(x_train_text)
+
+x_train_seq = tokenizer.texts_to_sequences(x_train_text)
+x_test_seq = tokenizer.texts_to_sequences(x_test_text)
+
+x_train = pad_sequences(x_train_seq, maxlen=maxlen)
+x_test = pad_sequences(x_test_seq, maxlen=maxlen)
+
+y_train = np.array(y_train)
+y_test = np.array(y_test)
+
+# Model Building and Compiling
+n_unique_words = 10000
+model = Sequential()
+model.add(Embedding(n_unique_words, 64, input_length=maxlen))
+model.add(LSTM(32))
+model.add(Dropout(0.5))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Training the Model
+history = model.fit(x_train, y_train, batch_size=128, epochs=10, validation_data=(x_test, y_test))
+
+# Plotting Results
+from matplotlib import pyplot as plt
+
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model Loss vs Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Loss', 'Accuracy', 'Val_Loss', 'Val_Accuracy'], loc='upper right')
+plt.show()
+
+# Sample Prediction
+sample_text = "This is a great movie with fantastic performances!"
+sample_text = preprocess_text(sample_text)
+tokenized_sample = tokenizer.texts_to_sequences([sample_text])
+padded_sample = pad_sequences(tokenized_sample, maxlen=maxlen)
+prediction = model.predict(padded_sample)
+threshold = 0.5
+
+if prediction[0][0] > threshold:
+    print(f"The sample text is predicted as positive with confidence: {prediction[0][0]}")
+else:
+    print(f"The sample text is predicted as negative with confidence: {1 - prediction[0][0]}")
+
+
+
+
+
+
+
+___________________________________________________________________________________________________
+
+
+
+
+
+
+# Importing the Libraries
+from keras.layers import Dense, Input
+from keras.models import Model
+from keras.datasets import mnist
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Model Architecture
+encoding_dim = 15  # Dimension for encoding
+input_img = Input(shape=(784,))
+encoded = Dense(encoding_dim, activation='relu')(input_img)
+decoded = Dense(784, activation='sigmoid')(encoded)
+autoencoder = Model(input_img, decoded)
+
+# Encoder and Decoder Models
+encoder = Model(input_img, encoded)
+encoded_input = Input(shape=(encoding_dim,))
+decoder_layer = autoencoder.layers[-1]
+decoder = Model(encoded_input, decoder_layer(encoded_input))
+
+# Model Compilation
+autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
+
+# Loading and Preparing Data
+(x_train, _), (x_test, _) = mnist.load_data()
+x_train = x_train.astype('float32') / 255.0
+x_test = x_test.astype('float32') / 255.0
+x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
+x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
+
+print(f"x_train shape: {x_train.shape}")
+print(f"x_test shape: {x_test.shape}")
+
+# Model Fitting
+autoencoder.fit(
+    x_train, x_train,
+    epochs=15,
+    batch_size=256,
+    validation_data=(x_test, x_test)
+)
+
+# Evaluation and Visualization
+encoded_imgs = encoder.predict(x_test)
+decoded_imgs = decoder.predict(encoded_imgs)
+
+# Displaying Original, Encoded, and Decoded Images
+import random
+plt.figure(figsize=(20, 6))
+for i in range(10):
+    # Original Image
+    ax = plt.subplot(3, 10, i + 1)
+    plt.imshow(x_test[i].reshape(28, 28), cmap='gray')
+    plt.title("Original")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+
+    # Encoded Image
+    ax = plt.subplot(3, 10, i + 11)
+    plt.imshow(encoded_imgs[i].reshape(encoding_dim, 1), aspect=0.05, cmap='gray')
+    plt.title("Encoded")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+
+    # Decoded Image
+    ax = plt.subplot(3, 10, i + 21)
+    plt.imshow(decoded_imgs[i].reshape(28, 28), cmap='gray')
+    plt.title("Decoded")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+
+plt.show()
+
+
+
+
+
+
+
+
+
+____________________________________________________________________________________________________________
+
+
+
+
+
+
+import tensorflow as tf
+from tensorflow.keras import layers
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import time
+from IPython import display
+
+# Loading Dataset
+(train_images, _), _ = tf.keras.datasets.mnist.load_data()
+train_images = train_images.reshape(train_images.shape[0], 28, 28, 1).astype('float32')
+train_images = (train_images - 127.5) / 127.5  # Normalize the images to [-1, 1]
+BUFFER_SIZE = 60000
+BATCH_SIZE = 128
+
+train_dataset = tf.data.Dataset.from_tensor_slices(train_images).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+
+# Generator Model
+def make_generator_model():
+    model = tf.keras.Sequential()
+    model.add(layers.Dense(7 * 7 * 256, use_bias=False, input_shape=(100,)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+    model.add(layers.Reshape((7, 7, 256)))
+    model.add(layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+    model.add(layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+    model.add(layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
+    return model
+
+generator = make_generator_model()
+
+# Discriminator Model
+def make_discriminator_model():
+    model = tf.keras.Sequential()
+    model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same', input_shape=[28, 28, 1]))
+    model.add(layers.LeakyReLU())
+    model.add(layers.Dropout(0.3))
+    model.add(layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same'))
+    model.add(layers.LeakyReLU())
+    model.add(layers.Dropout(0.3))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(1))
+    return model
+
+discriminator = make_discriminator_model()
+
+# Loss and Optimizers
+cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
+def discriminator_loss(real_output, fake_output):
+    real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+    fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
+    return real_loss + fake_loss
+
+def generator_loss(fake_output):
+    return cross_entropy(tf.ones_like(fake_output), fake_output)
+
+generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
+
+checkpoint_dir = './training_checkpoints'
+checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                                 discriminator_optimizer=discriminator_optimizer,
+                                 generator=generator,
+                                 discriminator=discriminator)
+
+# Training the GAN
+EPOCHS = 50
+noise_dim = 100
+num_examples_to_generate = 16
+seed = tf.random.normal([num_examples_to_generate, noise_dim])
+
+@tf.function
+def train_step(images):
+    noise = tf.random.normal([BATCH_SIZE, noise_dim])
+
+    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+        generated_images = generator(noise, training=True)
+        real_output = discriminator(images, training=True)
+        fake_output = discriminator(generated_images, training=True)
+        gen_loss = generator_loss(fake_output)
+        disc_loss = discriminator_loss(real_output, fake_output)
+
+    gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+    gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+    generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+    discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+
+def train(dataset, epochs):
+    for epoch in range(epochs):
+        start = time.time()
+        for image_batch in dataset:
+            train_step(image_batch)
+        display.clear_output(wait=True)
+        generate_and_save_images(generator, epoch + 1, seed)
+        if (epoch + 1) % 15 == 0:
+            checkpoint.save(file_prefix=checkpoint_prefix)
+        print(f'Time for epoch {epoch + 1} is {time.time() - start} sec')
+
+    display.clear_output(wait=True)
+    generate_and_save_images(generator, epochs, seed)
+
+# Generate and Save Images
+def generate_and_save_images(model, epoch, test_input):
+    predictions = model(test_input, training=False)
+    fig = plt.figure(figsize=(4, 4))
+
+    for i in range(predictions.shape[0]):
+        plt.subplot(4, 4, i + 1)
+        plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
+        plt.axis('off')
+
+    plt.savefig(f'image_at_epoch_{epoch:04d}.png')
+    plt.show()
+
+# Start Training
+train(train_dataset, EPOCHS)
